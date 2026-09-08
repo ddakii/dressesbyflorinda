@@ -6,7 +6,7 @@
     "dev:server": "npm run dev --prefix server",
     "dev:all": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "setup": "npm install --prefix client && npm install --prefix server && npm run db:setup --prefix server",
-    "build": "npm install --prefix client && npm install --prefix server && npm run db:generate --prefix server && npm run build --prefix client && npm run build --prefix server",
+    "build": "npm install --include=dev --prefix client && npm install --include=dev --prefix server && npm run db:generate --prefix server && npm run build --prefix client && npm run build --prefix server",
     "start": "npm start --prefix server"
   }
 }
