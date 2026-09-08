@@ -95,7 +95,8 @@ export function Header() {
           </span>
         </Link>
 
-        <div className="flex items-center justify-end gap-4 md:gap-5">
+        <div className="flex items-center justify-end gap-3 md:gap-5">
+          <LanguageSwitcher />
           <button
             type="button"
             className="hidden md:inline-flex"
@@ -104,7 +105,6 @@ export function Header() {
           >
             <Search size={18} strokeWidth={1.25} />
           </button>
-          <LanguageSwitcher className="hidden md:flex" />
           <Link to="/account" className="hidden md:inline-flex" aria-label={t('nav.account')}>
             <UserRound size={18} strokeWidth={1.25} />
           </Link>
@@ -201,8 +201,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           {t('nav.search')}
         </button>
       </nav>
-      <div className="absolute inset-x-0 bottom-8 flex items-center justify-between px-6">
-        <LanguageSwitcher />
+      <div className="absolute inset-x-0 bottom-8 px-6">
         <a href="https://instagram.com/dressesbyflorinda" className="text-[11px] tracking-[0.2em] uppercase">
           Instagram
         </a>
