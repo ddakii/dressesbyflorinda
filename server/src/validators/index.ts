@@ -23,6 +23,15 @@ export const contactSchema = z.object({
   message: z.string().min(1),
 })
 
+export const collectionSchema = z.object({
+  nameEn: z.string().min(1),
+  nameSq: z.string().min(1),
+  descriptionEn: z.string().min(1),
+  descriptionSq: z.string().min(1),
+  heroImage: z.string().min(1),
+  slug: z.string().min(1).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+})
+
 export const checkoutSchema = z.object({
   items: z.array(z.object({
     variantId: z.string(),

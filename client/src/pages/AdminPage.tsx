@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import { products as seedProducts } from '@/data/catalog'
+import { collections as seedCollections, products as seedProducts } from '@/data/catalog'
 import { adminRequest, login } from '@/lib/api'
 import { useAuthStore } from '@/lib/stores'
-import { formatPrice, loc, type Product } from '@/types'
+import { formatPrice, loc, type Collection, type Product } from '@/types'
 
 type AdminOrder = {
   id: string
@@ -49,7 +49,7 @@ export function AdminPage() {
             <Route path="inventory" element={<AdminInventory />} />
             <Route path="customers" element={<AdminSimple title="Customers" text="Customer records appear here once accounts are created." />} />
             <Route path="categories" element={<AdminSimple title="Categories" text="Evening, Occasion, Cocktail, Bridal, New Arrivals and Best Sellers are managed from the database." />} />
-            <Route path="collections" element={<AdminSimple title="Collections" text="Evening Edit, Signature and New Season can be edited from the studio API." />} />
+            <Route path="collections" element={<AdminCollections />} />
             <Route path="coupons" element={<AdminSimple title="Coupons" text="Create percentage or fixed coupons. Totals are always calculated on the server." />} />
             <Route path="content" element={<AdminSimple title="Content" text="About, policies and FAQ copy is stored as editable studio content." />} />
             <Route path="newsletter" element={<AdminSimple title="Newsletter" text="Subscribers collected from the storefront appear in this list." />} />
@@ -344,6 +344,135 @@ function AdminInventory() {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function AdminCollections() {
+  const lookImages = Array.from({ length: 28 }, (_, i) => `/images/look-${String(i + 1).padStart(2, '0')}.jpg`)
+  const empty: Collection = {
+    id: '',
+    slug: '',
+    name: { en: '', sq: '' },
+    description: { en: '', sq: '' },
+    heroImage: '/images/look-16.jpg',
+  }
+  const [list, setList] = useState<(Collection & { productCount?: number })[]>([])
+  const [editing, setEditing] = useState<Collection | null>(null)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    void adminRequest<{ collections: (Collection & { productCount?: number })[] }>('/collections')
+      .then((data) => data?.collections && setList(data.collections))
+      .catch(() => setList(seedCollections))
+  }, [])
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    setError('')
+    setSaved(false)
+    const payload = {
+      nameEn: editing.name.en.trim(),
+      nameSq: editing.name.sq.trim(),
+      descriptionEn: editing.description.en.trim(),
+      descriptionSq: editing.description.sq.trim(),
+      heroImage: editing.heroImage.trim(),
+      slug: editing.slug.trim().toLowerCase(),
+    }
+    try {
+      const data = await adminRequest<{ collection: Collection }>(
+        editing.id ? `/collections/${editing.id}` : '/collections',
+        {
+          method: editing.id ? 'PUT' : 'POST',
+          body: JSON.stringify(payload),
+        },
+      )
+      if (!data?.collection) throw new Error('save_failed')
+      setList((prev) => {
+        const next = data.collection
+        const exists = prev.some((item) => item.id === next.id)
+        return exists ? prev.map((item) => (item.id === next.id ? { ...item, ...next } : item)) : [...prev, next]
+      })
+      setEditing(data.collection)
+      setSaved(true)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      setError(message === 'slug_taken' ? 'That URL slug is already used by another collection.' : 'Could not save. Check the fields and try again.')
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-medium">Collections</h1>
+        <button className="bg-[#1c1b1a] px-4 py-2 text-xs text-white uppercase" onClick={() => { setEditing({ ...empty }); setSaved(false); setError('') }}>
+          New collection
+        </button>
+      </div>
+      <p className="mt-3 max-w-xl text-sm text-black/50">
+        Evening Edit, Signature and New Season appear on the storefront. Changes here update names, descriptions, photos and URLs.
+      </p>
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {list.map((collection) => (
+          <button
+            key={collection.id}
+            type="button"
+            className={`bg-white p-4 text-left ${editing?.id === collection.id ? 'ring-1 ring-black' : ''}`}
+            onClick={() => { setEditing(collection); setSaved(false); setError('') }}
+          >
+            <img src={collection.heroImage} alt="" className="aspect-[3/4] w-full object-cover object-[center_18%]" />
+            <p className="mt-3 font-medium">{collection.name.en}</p>
+            <p className="mt-1 text-xs uppercase tracking-widest text-black/45">{collection.slug}</p>
+            <p className="mt-2 text-xs text-black/50">{collection.productCount ?? 0} dresses</p>
+          </button>
+        ))}
+      </div>
+      {editing ? (
+        <form onSubmit={onSubmit} className="mt-10 max-w-2xl space-y-5 bg-white p-6">
+          <h2 className="text-lg font-medium">{editing.id ? 'Edit collection' : 'New collection'}</h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className="block text-sm">Name (English)
+              <input
+                className="mt-1 w-full border-b py-2 outline-none"
+                value={editing.name.en}
+                onChange={(e) => {
+                  const nameEn = e.target.value
+                  const slug = editing.id ? editing.slug : nameEn.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+                  setEditing({ ...editing, name: { ...editing.name, en: nameEn }, slug })
+                }}
+              />
+            </label>
+            <label className="block text-sm">Name (Albanian)
+              <input className="mt-1 w-full border-b py-2 outline-none" value={editing.name.sq} onChange={(e) => setEditing({ ...editing, name: { ...editing.name, sq: e.target.value } })} />
+            </label>
+          </div>
+          <label className="block text-sm">Description (English)
+            <textarea className="mt-1 w-full border-b py-2 outline-none" rows={3} value={editing.description.en} onChange={(e) => setEditing({ ...editing, description: { ...editing.description, en: e.target.value } })} />
+          </label>
+          <label className="block text-sm">Description (Albanian)
+            <textarea className="mt-1 w-full border-b py-2 outline-none" rows={3} value={editing.description.sq} onChange={(e) => setEditing({ ...editing, description: { ...editing.description, sq: e.target.value } })} />
+          </label>
+          <label className="block text-sm">URL slug
+            <input className="mt-1 w-full border-b py-2 outline-none" value={editing.slug} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="evening-edit" />
+          </label>
+          <label className="block text-sm">Hero photograph
+            <select className="mt-1 w-full border-b bg-transparent py-2 outline-none" value={lookImages.includes(editing.heroImage) ? editing.heroImage : ''} onChange={(e) => setEditing({ ...editing, heroImage: e.target.value })}>
+              <option value="">Custom path</option>
+              {lookImages.map((src) => (
+                <option key={src} value={src}>{src.replace('/images/', '')}</option>
+              ))}
+            </select>
+            {!lookImages.includes(editing.heroImage) ? (
+              <input className="mt-2 w-full border-b py-2 outline-none" value={editing.heroImage} onChange={(e) => setEditing({ ...editing, heroImage: e.target.value })} />
+            ) : null}
+          </label>
+          {editing.heroImage ? <img src={editing.heroImage} alt="" className="h-48 w-36 object-cover object-[center_18%]" /> : null}
+          {error ? <p className="text-xs text-red-700">{error}</p> : null}
+          <button className="bg-[#1c1b1a] px-5 py-2 text-xs text-white uppercase">{saved ? 'Saved' : 'Save collection'}</button>
+        </form>
+      ) : null}
     </div>
   )
 }

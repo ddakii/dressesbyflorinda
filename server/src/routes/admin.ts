@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { prisma } from '../prisma.js'
 import { optionalAuth, requireAdmin } from '../middleware/auth.js'
-import { mapProduct } from '../utils/map.js'
+import { mapCollection, mapProduct } from '../utils/map.js'
+import { collectionSchema } from '../validators/index.js'
 import { verifyWebhook } from '../services/payment.js'
 
 export const adminRouter = Router()
@@ -111,6 +112,47 @@ adminRouter.patch('/inventory/:id', async (req, res) => {
     data: { stock: Number(req.body.stock) },
   })
   res.json({ variant })
+})
+
+adminRouter.get('/collections', async (_req, res) => {
+  const collections = await prisma.collection.findMany({
+    include: { _count: { select: { products: true } } },
+    orderBy: { nameEn: 'asc' },
+  })
+  res.json({
+    collections: collections.map((collection) => ({
+      ...mapCollection(collection),
+      productCount: collection._count.products,
+    })),
+  })
+})
+
+adminRouter.post('/collections', async (req, res) => {
+  const parsed = collectionSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_collection' })
+  const taken = await prisma.collection.findUnique({ where: { slug: parsed.data.slug } })
+  if (taken) return res.status(409).json({ error: 'slug_taken' })
+  const collection = await prisma.collection.create({ data: parsed.data })
+  res.json({ collection: mapCollection(collection) })
+})
+
+adminRouter.put('/collections/:id', async (req, res) => {
+  const parsed = collectionSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_collection' })
+  const id = String(req.params.id)
+  const taken = await prisma.collection.findFirst({
+    where: { slug: parsed.data.slug, NOT: { id } },
+  })
+  if (taken) return res.status(409).json({ error: 'slug_taken' })
+  try {
+    const collection = await prisma.collection.update({
+      where: { id },
+      data: parsed.data,
+    })
+    res.json({ collection: mapCollection(collection) })
+  } catch {
+    res.status(404).json({ error: 'not_found' })
+  }
 })
 
 adminRouter.post('/coupons', async (req, res) => {

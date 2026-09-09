@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { Heart, Search, ShoppingBag, UserRound, X } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { collections as fallbackCollections } from '@/data/catalog'
+import { fetchCollections } from '@/lib/api'
 import { useI18n } from '@/lib/i18n'
 import { useCartStore, useUiStore, useWishlistStore } from '@/lib/stores'
+import { loc, type Collection } from '@/types'
 
 export function Header() {
   const { t } = useI18n()
@@ -134,7 +137,15 @@ export function Header() {
 }
 
 function MegaMenu({ onNavigate }: { onNavigate: () => void }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
+  const [cols, setCols] = useState<Collection[]>(fallbackCollections)
+
+  useEffect(() => {
+    void fetchCollections().then(setCols)
+  }, [])
+
+  const featured = cols.find((c) => c.slug === 'signature') ?? cols[0]
+
   return (
     <div className="absolute left-0 top-full z-50 w-[720px] border border-line bg-ivory p-10 shadow-none">
       <div className="grid grid-cols-3 gap-10">
@@ -150,15 +161,19 @@ function MegaMenu({ onNavigate }: { onNavigate: () => void }) {
         <div>
           <p className="mb-4 text-[10px] tracking-nav uppercase text-muted">{t('mega.collections')}</p>
           <ul className="space-y-3 text-sm">
-            <li><Link to="/collections/evening-edit" onClick={onNavigate}>{t('mega.eveningEdit')}</Link></li>
-            <li><Link to="/collections/signature" onClick={onNavigate}>{t('mega.signature')}</Link></li>
-            <li><Link to="/collections/new-season" onClick={onNavigate}>{t('mega.newSeason')}</Link></li>
+            {cols.map((collection) => (
+              <li key={collection.id}>
+                <Link to={`/collections/${collection.slug}`} onClick={onNavigate}>{loc(collection.name, locale)}</Link>
+              </li>
+            ))}
           </ul>
         </div>
-        <Link to="/collections/signature" onClick={onNavigate} className="block">
-          <img src="/images/look-14.jpg" alt="" loading="lazy" decoding="async" className="aspect-[3/4] w-full object-cover object-[center_18%]" />
-          <p className="mt-3 text-[10px] tracking-[0.18em] uppercase text-muted">{t('mega.editorial')}</p>
-        </Link>
+        {featured ? (
+          <Link to={`/collections/${featured.slug}`} onClick={onNavigate} className="block">
+            <img src={featured.heroImage} alt="" loading="lazy" decoding="async" className="aspect-[3/4] w-full object-cover object-[center_18%]" />
+            <p className="mt-3 text-[10px] tracking-[0.18em] uppercase text-muted">{t('mega.editorial')}</p>
+          </Link>
+        ) : null}
       </div>
     </div>
   )
