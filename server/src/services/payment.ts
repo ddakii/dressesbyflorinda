@@ -26,7 +26,7 @@ export async function createPaymentSession(input: {
   // Never accept raw card numbers in this application.
   const origin =
     process.env.PUBLIC_STORE_URL ||
-    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:5173')
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://127.0.0.1:5173')
   return {
     provider: 'stripe',
     mode: 'redirect',
