@@ -13,7 +13,8 @@ const app = express()
 const port = Number(process.env.PORT || 4000)
 const storeUrl =
   process.env.PUBLIC_STORE_URL ||
-  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:5173')
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://127.0.0.1:5173')
+const allowedOrigins = [storeUrl, 'http://127.0.0.1:5173', 'http://localhost:5173']
 
 app.set('trust proxy', 1)
 app.use(helmet({
@@ -21,7 +22,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }))
 app.use(cors({
-  origin: [storeUrl, 'http://localhost:5173'],
+  origin: allowedOrigins,
   credentials: true,
 }))
 app.use(cookieParser())
@@ -66,6 +67,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(status).json({ error: status === 500 ? 'server_error' : err.message })
 })
 
-app.listen(port, () => {
-  console.log(`Florinda API listening on ${port}`)
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Florinda API listening on 0.0.0.0:${port}`)
 })
